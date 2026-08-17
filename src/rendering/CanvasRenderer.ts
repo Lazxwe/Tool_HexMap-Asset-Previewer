@@ -175,11 +175,8 @@ export class CanvasRenderer {
           const center = hexGeometry.hexToPixel(coord);
           const fallback = fallbackMap.get(coord.toKey());
 
-          if (fallback) {
-            ctx.fillStyle = "rgba(240, 245, 255, 0.9)";
-            ctx.fillText(fallback.label || fallback.terrainId, center.x, center.y);
-          } else if (!stampedKeys.has(coord.toKey())) {
-            // Unassigned empty grid label
+          if (!fallback && !stampedKeys.has(coord.toKey())) {
+            // Unassigned empty grid coordinate label
             ctx.fillStyle = labelColor;
             ctx.fillText(`${c},${r}`, center.x, center.y);
           }

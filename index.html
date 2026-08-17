@@ -73,7 +73,16 @@
         </main>
         <aside id="panel-asset-library" class="asset-library-panel">
           <div class="asset-library-header">
-            <h3>素材庫與變體管理</h3>
+            <div class="asset-library-title-row">
+              <h3>地形與素材庫</h3>
+              <button type="button" id="btn-add-terrain" class="btn-primary btn-sm" title="新增自訂地形類別">＋ 新增</button>
+            </div>
+            <div class="asset-library-actions-row">
+              <button type="button" id="btn-import-terrain-config" class="btn-secondary btn-xs" title="從 JSON 檔案載入地形配置">匯入</button>
+              <button type="button" id="btn-export-terrain-config" class="btn-secondary btn-xs" title="匯出當前地形配置為 JSON 檔案">匯出</button>
+              <button type="button" id="btn-reset-terrain-config" class="btn-secondary btn-xs" title="清除自訂設定並重置為預設 4 地形">重設預設</button>
+              <input type="file" id="input-terrain-config-file" accept=".json,application/json" class="hidden" />
+            </div>
           </div>
           <div id="asset-library-content" class="asset-library-content">
             <!-- Dynamically populated by EditorUI -->
@@ -85,6 +94,37 @@
         <div id="status-text" class="status-cell">狀態：初始化中...</div>
         <div id="hover-info" class="status-cell hover-cell">游標位置：無</div>
       </footer>
+
+      <!-- Add Terrain Modal -->
+      <div id="modal-add-terrain" class="modal-overlay hidden">
+        <div class="modal-card">
+          <div class="modal-header">
+            <h2>新增自訂地形類別</h2>
+            <button type="button" id="btn-close-add-terrain-modal" class="btn-icon" title="關閉">✕</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label for="input-new-terrain-id">地形 ID (英文唯一代號):</label>
+              <input type="text" id="input-new-terrain-id" placeholder="例如: snow, swamp, lava" class="input-control" />
+            </div>
+            <div class="form-group">
+              <label for="input-new-terrain-name">顯示名稱 (介面與狀態列):</label>
+              <input type="text" id="input-new-terrain-name" placeholder="例如: 雪地 / 冰原" class="input-control" />
+            </div>
+            <div class="form-group">
+              <label for="input-new-terrain-color">佔位色塊 (無素材時顯示底色):</label>
+              <div class="color-picker-row">
+                <input type="color" id="input-new-terrain-color" value="#0284c7" class="terrain-color-picker-lg" />
+                <span id="label-new-terrain-color-val" class="color-hex-label">#0284c7</span>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" id="btn-cancel-add-terrain" class="btn-secondary">取消</button>
+            <button type="button" id="btn-submit-add-terrain" class="btn-primary">確認新增</button>
+          </div>
+        </div>
+      </div>
 
       <!-- Asset Registration Modal (Task 014) -->
       <div id="modal-asset-register" class="modal-overlay hidden">

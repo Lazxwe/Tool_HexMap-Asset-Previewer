@@ -2,13 +2,11 @@
  * Hex Terrain Preview - Main Application Entry (Composition Root)
  * Task 010: Editor Core & UI Application Assembly
  */
-import { AssetId } from "./domain/asset/AssetId";
-import { TerrainAsset } from "./domain/asset/TerrainAsset";
-import { TerrainAssetRegistry } from "./domain/asset/TerrainAssetRegistry";
 import { HexGeometry } from "./domain/hex/HexGeometry";
 import { TerrainDefinition } from "./domain/terrain/TerrainDefinition";
 import { TerrainId } from "./domain/terrain/TerrainId";
 import { TerrainRegistry } from "./domain/terrain/TerrainRegistry";
+import { TerrainAssetRegistry } from "./domain/asset/TerrainAssetRegistry";
 import { EditorCore } from "./editor/EditorCore";
 import { SeededNoiseField } from "./generation/SeededNoiseField";
 import { TerrainClassifier } from "./generation/TerrainClassification";
@@ -18,50 +16,6 @@ import { BrowserImageDecoder } from "./infrastructure/asset/BrowserImageDecoder"
 import { CanvasRenderer } from "./rendering/CanvasRenderer";
 import { Viewport } from "./rendering/Viewport";
 import { EditorUI } from "./ui/EditorUI";
-
-/**
- * Creates procedural Data-URL PNG stamps for the demo environment.
- */
-function createDemoStampDataUrl(
-  label: string,
-  primaryColor: string,
-  accentColor: string,
-  width: number,
-  height: number
-): string {
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return "";
-
-  const grad = ctx.createRadialGradient(
-    width / 2,
-    height / 2,
-    10,
-    width / 2,
-    height / 2,
-    width / 2
-  );
-  grad.addColorStop(0, primaryColor);
-  grad.addColorStop(1, accentColor);
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, width, height);
-
-  // Subtle inner vignette / pattern
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
-  ctx.lineWidth = 4;
-  ctx.strokeRect(4, 4, width - 8, height - 8);
-
-  // Center icon and text
-  ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
-  ctx.font = `bold ${Math.round(height * 0.22)}px -apple-system, sans-serif`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(label, width / 2, height / 2);
-
-  return canvas.toDataURL("image/png");
-}
 
 function initApp(): void {
   const canvas = document.getElementById("viewport-canvas") as HTMLCanvasElement | null;
@@ -83,33 +37,13 @@ function initApp(): void {
   const mountainId = new TerrainId("mountain");
 
   const terrainRegistry = new TerrainRegistry();
-  terrainRegistry.register(new TerrainDefinition({ id: waterId, displayName: "水域" }));
-  terrainRegistry.register(new TerrainDefinition({ id: sandId, displayName: "沙地 / 平原" }));
-  terrainRegistry.register(new TerrainDefinition({ id: forestId, displayName: "森林" }));
-  terrainRegistry.register(new TerrainDefinition({ id: mountainId, displayName: "山脈 / 高山" }));
+  terrainRegistry.register(new TerrainDefinition({ id: waterId, displayName: "水域", fallbackColor: "#1d4ed8" }));
+  terrainRegistry.register(new TerrainDefinition({ id: sandId, displayName: "沙地 / 平原", fallbackColor: "#d97706" }));
+  terrainRegistry.register(new TerrainDefinition({ id: forestId, displayName: "森林", fallbackColor: "#15803d" }));
+  terrainRegistry.register(new TerrainDefinition({ id: mountainId, displayName: "山脈 / 高山", fallbackColor: "#475569" }));
 
-  // 2. Initialize Visual Stamp Assets (Multiple weighted variants per terrain)
+  // 2. Initialize Visual Stamp Assets (Clean default - ready for artist PNG import)
   const terrainAssetRegistry = new TerrainAssetRegistry();
-
-  const water01Url = createDemoStampDataUrl("🌊 水域 1", "#1a365d", "#0f2038", 180, 180);
-  const water02Url = createDemoStampDataUrl("💧 水域 2", "#2b6cb0", "#1a365d", 180, 180);
-  terrainAssetRegistry.register(new TerrainAsset({ id: new AssetId("water_01"), terrainId: waterId, name: "水域 1", source: water01Url, weight: 10 }));
-  terrainAssetRegistry.register(new TerrainAsset({ id: new AssetId("water_02"), terrainId: waterId, name: "水域 2", source: water02Url, weight: 5 }));
-
-  const sand01Url = createDemoStampDataUrl("🏜️ 沙地 1", "#d69e2e", "#744210", 180, 180);
-  const sand02Url = createDemoStampDataUrl("🌾 沙地 2", "#b7791f", "#5b3708", 180, 180);
-  terrainAssetRegistry.register(new TerrainAsset({ id: new AssetId("sand_01"), terrainId: sandId, name: "沙地 1", source: sand01Url, weight: 10 }));
-  terrainAssetRegistry.register(new TerrainAsset({ id: new AssetId("sand_02"), terrainId: sandId, name: "沙地 2", source: sand02Url, weight: 5 }));
-
-  const forest01Url = createDemoStampDataUrl("🌲 森林 1", "#1c4532", "#0c2317", 180, 180);
-  const forest02Url = createDemoStampDataUrl("🌳 森林 2", "#276749", "#133524", 180, 180);
-  terrainAssetRegistry.register(new TerrainAsset({ id: new AssetId("forest_01"), terrainId: forestId, name: "森林 1", source: forest01Url, weight: 10 }));
-  terrainAssetRegistry.register(new TerrainAsset({ id: new AssetId("forest_02"), terrainId: forestId, name: "森林 2", source: forest02Url, weight: 6 }));
-
-  const mountain01Url = createDemoStampDataUrl("⛰️ 山脈 1", "#4a5568", "#1a202c", 200, 160);
-  const mountain02Url = createDemoStampDataUrl("🏔️ 山脈 2", "#718096", "#2d3748", 200, 160);
-  terrainAssetRegistry.register(new TerrainAsset({ id: new AssetId("mountain_01"), terrainId: mountainId, name: "山脈 1", source: mountain01Url, weight: 10 }));
-  terrainAssetRegistry.register(new TerrainAsset({ id: new AssetId("mountain_02"), terrainId: mountainId, name: "山脈 2", source: mountain02Url, weight: 4 }));
 
   // 3. Initialize Geometry & Generation Services
   const hexGeometry = new HexGeometry(120, 70);
@@ -177,6 +111,19 @@ function initApp(): void {
     hoverInfo: document.getElementById("hover-info"),
     panelAssetLibrary: document.getElementById("panel-asset-library"),
     assetLibraryContent: document.getElementById("asset-library-content"),
+    btnAddTerrain: document.getElementById("btn-add-terrain") as HTMLButtonElement | null,
+    btnImportTerrainConfig: document.getElementById("btn-import-terrain-config") as HTMLButtonElement | null,
+    btnExportTerrainConfig: document.getElementById("btn-export-terrain-config") as HTMLButtonElement | null,
+    btnResetTerrainConfig: document.getElementById("btn-reset-terrain-config") as HTMLButtonElement | null,
+    inputTerrainConfigFile: document.getElementById("input-terrain-config-file") as HTMLInputElement | null,
+    modalAddTerrain: document.getElementById("modal-add-terrain"),
+    btnCloseAddTerrainModal: document.getElementById("btn-close-add-terrain-modal") as HTMLButtonElement | null,
+    btnCancelAddTerrain: document.getElementById("btn-cancel-add-terrain") as HTMLButtonElement | null,
+    btnSubmitAddTerrain: document.getElementById("btn-submit-add-terrain") as HTMLButtonElement | null,
+    inputNewTerrainId: document.getElementById("input-new-terrain-id") as HTMLInputElement | null,
+    inputNewTerrainName: document.getElementById("input-new-terrain-name") as HTMLInputElement | null,
+    inputNewTerrainColor: document.getElementById("input-new-terrain-color") as HTMLInputElement | null,
+    labelNewTerrainColorVal: document.getElementById("label-new-terrain-color-val"),
   });
 
   ui.mount();

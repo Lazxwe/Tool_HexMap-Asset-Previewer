@@ -78,3 +78,49 @@ export class TerrainClassifier {
     return this.thresholds;
   }
 }
+
+export interface TerrainWeightEntry {
+  readonly terrainId: TerrainId | string;
+  readonly weight: number;
+}
+
+/**
+ * Creates a TerrainClassifier dynamically partitioned by relative weights.
+ *
+ * Example:
+ * [ { terrainId: 'forest', weight: 2 }, { terrainId: 'mountain', weight: 1 } ]
+ * -> Forest: [0, 0.6667], Mountain: [0.6667, 1.0]
+ */
+export function createClassifierFromWeights(
+  entries: readonly TerrainWeightEntry[]
+): TerrainClassifier {
+  if (!entries || !Array.isArray(entries) || entries.length === 0) {
+    throw new Error("createClassifierFromWeights requires a non-empty array of entries.");
+  }
+
+  const validEntries = entries.filter((e) => typeof e.weight === "number" && Number.isFinite(e.weight) && e.weight > 0);
+  if (validEntries.length === 0) {
+    throw new Error("createClassifierFromWeights requires at least one terrain with a positive weight (> 0).");
+  }
+
+  const totalWeight = validEntries.reduce((sum, e) => sum + e.weight, 0);
+  const thresholds: TerrainThreshold[] = [];
+
+  let accumulated = 0;
+  for (let i = 0; i < validEntries.length; i++) {
+    const entry = validEntries[i];
+    const terrainId = entry.terrainId instanceof TerrainId ? entry.terrainId : new TerrainId(entry.terrainId);
+
+    accumulated += entry.weight;
+    const isLast = i === validEntries.length - 1;
+    const max = isLast ? 1.0 : Math.min(1.0, accumulated / totalWeight);
+
+    thresholds.push({
+      terrainId,
+      max,
+    });
+  }
+
+  return new TerrainClassifier(thresholds);
+}
+

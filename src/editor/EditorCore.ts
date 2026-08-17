@@ -15,6 +15,14 @@ import { Viewport } from "../rendering/Viewport";
 import { PersistableMapState } from "../persistence/ProjectTypes";
 import { ProjectDeserializer } from "../persistence/ProjectDeserializer";
 import {
+  DEFAULT_TERRAIN_CONFIGS,
+  TerrainConfigItem,
+} from "../domain/terrain/TerrainConfigTypes";
+import { TerrainDefinition } from "../domain/terrain/TerrainDefinition";
+import { TerrainId } from "../domain/terrain/TerrainId";
+import { createClassifierFromWeights } from "../generation/TerrainClassification";
+import { TerrainStorage } from "../persistence/TerrainStorage";
+import {
   createInitialEditorState,
   deriveAssetSeed,
   EditorConfig,
@@ -31,6 +39,8 @@ export interface EditorCoreDependencies {
   readonly assetLoader: IAssetLoader;
   readonly geometry: HexGeometry;
   readonly viewport?: Viewport;
+  readonly terrainStorage?: TerrainStorage;
+  readonly initialTerrainConfigs?: readonly TerrainConfigItem[];
 }
 
 export type StateListener = (state: EditorState) => void;
@@ -43,15 +53,21 @@ export type StateListener = (state: EditorState) => void;
 export class EditorCore {
   private _state: EditorState;
   private readonly listeners: Set<StateListener> = new Set();
-  private readonly deserializer: ProjectDeserializer = new ProjectDeserializer();
+  private readonly deserializer: ProjectDeserializer;
 
-  public readonly generator: TerrainGenerator;
+  private _generator: TerrainGenerator;
+  public get generator(): TerrainGenerator {
+    return this._generator;
+  }
+
   public readonly assetRegistry: TerrainAssetRegistry;
   public readonly terrainRegistry: TerrainRegistry;
   public readonly assetLoader: IAssetLoader;
   public readonly geometry: HexGeometry;
   public readonly viewport: Viewport;
+  public readonly terrainStorage: TerrainStorage;
 
+  private terrainConfigs: TerrainConfigItem[] = [];
   private cachedStamps: HexStampEntry[] = [];
   private cachedFallbacks: HexFallbackEntry[] = [];
   private currentGenerationId: number = 0;
@@ -63,12 +79,37 @@ export class EditorCore {
     if (!deps.assetLoader) throw new Error("EditorCore requires an IAssetLoader.");
     if (!deps.geometry) throw new Error("EditorCore requires a HexGeometry.");
 
-    this.generator = deps.generator;
+    this._generator = deps.generator;
     this.assetRegistry = deps.assetRegistry;
     this.terrainRegistry = deps.terrainRegistry;
     this.assetLoader = deps.assetLoader;
     this.geometry = deps.geometry;
     this.deserializer = new ProjectDeserializer(this.terrainRegistry);
+
+    this.terrainStorage = deps.terrainStorage ?? new TerrainStorage();
+    const storedConfigs = this.terrainStorage.load();
+    let initialConfigs: TerrainConfigItem[];
+    if (deps.initialTerrainConfigs) {
+      initialConfigs = [...deps.initialTerrainConfigs];
+    } else if (storedConfigs && storedConfigs.length > 0) {
+      initialConfigs = storedConfigs;
+    } else if (this.terrainRegistry.size > 0) {
+      initialConfigs = this.terrainRegistry.list().map((t) => ({
+        id: t.id.value,
+        displayName: t.displayName,
+        fallbackColor: t.fallbackColor,
+        generationWeight: 1.0,
+        isEnabled: true,
+      }));
+    } else {
+      initialConfigs = [...DEFAULT_TERRAIN_CONFIGS];
+    }
+
+    this.terrainConfigs = [...initialConfigs];
+    this.syncTerrainRegistry(false);
+    if (deps.initialTerrainConfigs || (storedConfigs && storedConfigs.length > 0)) {
+      this.rebuildClassifierFromConfigs(false);
+    }
 
     this.viewport =
       deps.viewport ??
@@ -84,6 +125,69 @@ export class EditorCore {
       initialPanX: this.viewport.panX,
       initialPanY: this.viewport.panY,
     });
+  }
+
+  /**
+   * Synchronizes terrain registry definitions from current configs.
+   */
+  public syncTerrainRegistry(persist: boolean = true): void {
+    if (persist) {
+      this.terrainStorage.save(this.terrainConfigs);
+    }
+
+    for (const item of this.terrainConfigs) {
+      const existing = this.terrainRegistry.get(item.id);
+      if (existing) {
+        if (
+          existing.displayName !== item.displayName ||
+          existing.fallbackColor !== item.fallbackColor
+        ) {
+          this.terrainRegistry.remove(item.id);
+          this.terrainRegistry.register(
+            new TerrainDefinition({
+              id: item.id,
+              displayName: item.displayName,
+              fallbackColor: item.fallbackColor,
+            })
+          );
+        }
+      } else {
+        this.terrainRegistry.register(
+          new TerrainDefinition({
+            id: item.id,
+            displayName: item.displayName,
+            fallbackColor: item.fallbackColor,
+          })
+        );
+      }
+    }
+  }
+
+  /**
+   * Rebuilds the generator classifier dynamically from active configs.
+   */
+  public rebuildClassifierFromConfigs(persist: boolean = true): void {
+    if (persist) {
+      this.terrainStorage.save(this.terrainConfigs);
+    }
+
+    const activeEntries = this.terrainConfigs
+      .filter((c) => c.isEnabled && c.generationWeight > 0)
+      .map((c) => ({ terrainId: c.id, weight: c.generationWeight }));
+
+    if (activeEntries.length > 0) {
+      try {
+        const dynamicClassifier = createClassifierFromWeights(activeEntries);
+        this._generator = this._generator.withClassifier(dynamicClassifier);
+      } catch (err) {
+        console.warn("Failed to create dynamic classifier from weights:", err);
+      }
+    }
+  }
+
+  public syncTerrainRegistryAndClassifier(persist: boolean = true): void {
+    this.syncTerrainRegistry(persist);
+    this.rebuildClassifierFromConfigs(persist);
   }
 
   public getState(): EditorState {
@@ -285,6 +389,7 @@ export class EditorCore {
             coord: entry.coord,
             terrainId: entry.terrainId.value,
             label: def ? def.displayName : entry.terrainId.value,
+            fillColor: def ? def.fallbackColor : undefined,
           });
         }
       }
@@ -381,6 +486,7 @@ export class EditorCore {
             coord: entry.coord,
             terrainId: entry.terrainId.value,
             label: def ? def.displayName : entry.terrainId.value,
+            fillColor: def ? def.fallbackColor : undefined,
           });
         }
       }
@@ -528,5 +634,110 @@ export class EditorCore {
       this.setSeed(newSeed);
     }
     return this.generate();
+  }
+
+  public getTerrainConfigs(): readonly TerrainConfigItem[] {
+    return this.terrainConfigs;
+  }
+
+  public async applyTerrainConfigs(
+    configs: readonly TerrainConfigItem[],
+    persist: boolean = true
+  ): Promise<void> {
+    this.terrainConfigs = [...configs];
+    this.syncTerrainRegistryAndClassifier(persist);
+
+    if (this._state.mapSource.kind === "builtin") {
+      await this.generate();
+    } else {
+      await this.rerollAssets(this._state.previewAssetSeed);
+    }
+  }
+
+  public async addTerrain(
+    id: string,
+    displayName: string,
+    fallbackColor: string = "#475569"
+  ): Promise<void> {
+    const cleanId = id.trim().toLowerCase();
+    if (!cleanId) {
+      throw new Error("地形 ID 不能為空。");
+    }
+    if (this.terrainConfigs.some((c) => c.id === cleanId)) {
+      throw new Error(`地形 ID '${cleanId}' 已經存在。`);
+    }
+
+    const newItem: TerrainConfigItem = {
+      id: cleanId,
+      displayName: displayName.trim() || cleanId,
+      fallbackColor: fallbackColor.trim() || "#475569",
+      generationWeight: 1.0,
+      isEnabled: true,
+    };
+
+    const nextConfigs = [...this.terrainConfigs, newItem];
+    await this.applyTerrainConfigs(nextConfigs, true);
+  }
+
+  public async removeTerrain(terrainId: string): Promise<void> {
+    const cleanId = terrainId.trim().toLowerCase();
+    const existingIndex = this.terrainConfigs.findIndex((c) => c.id === cleanId);
+    if (existingIndex === -1) {
+      throw new Error(`找不到 ID 為 '${cleanId}' 的地形。`);
+    }
+
+    const nextConfigs = this.terrainConfigs.filter((c) => c.id !== cleanId);
+    if (nextConfigs.length === 0) {
+      throw new Error("不能刪除最後一個地形。請至少保留一種地形。");
+    }
+
+    this.terrainRegistry.remove(cleanId);
+    const assets = this.assetRegistry.getByTerrain(new TerrainId(cleanId));
+    for (const a of assets) {
+      this.assetRegistry.remove(a.id);
+    }
+
+    await this.applyTerrainConfigs(nextConfigs, true);
+  }
+
+  public async updateTerrainColor(terrainId: string, fallbackColor: string): Promise<void> {
+    const cleanId = terrainId.trim().toLowerCase();
+    const nextConfigs = this.terrainConfigs.map((c) =>
+      c.id === cleanId ? { ...c, fallbackColor } : c
+    );
+    await this.applyTerrainConfigs(nextConfigs, true);
+  }
+
+  public async updateTerrainGenerationWeight(terrainId: string, weight: number): Promise<void> {
+    if (!Number.isFinite(weight) || weight < 0) {
+      throw new Error("生成佔比必須為大於或等於 0 的有效數字。");
+    }
+    const cleanId = terrainId.trim().toLowerCase();
+    const nextConfigs = this.terrainConfigs.map((c) =>
+      c.id === cleanId ? { ...c, generationWeight: weight } : c
+    );
+    await this.applyTerrainConfigs(nextConfigs, true);
+  }
+
+  public async toggleTerrainGeneration(terrainId: string, isEnabled: boolean): Promise<void> {
+    const cleanId = terrainId.trim().toLowerCase();
+    const nextConfigs = this.terrainConfigs.map((c) =>
+      c.id === cleanId ? { ...c, isEnabled } : c
+    );
+    await this.applyTerrainConfigs(nextConfigs, true);
+  }
+
+  public async resetTerrainConfigToDefaults(): Promise<void> {
+    this.terrainStorage.clear();
+    await this.applyTerrainConfigs(DEFAULT_TERRAIN_CONFIGS, false);
+  }
+
+  public exportTerrainConfigJson(): string {
+    return this.terrainStorage.exportToJson(this.terrainConfigs);
+  }
+
+  public async importTerrainConfigJson(jsonStr: string): Promise<void> {
+    const imported = this.terrainStorage.importFromJson(jsonStr);
+    await this.applyTerrainConfigs(imported, true);
   }
 }

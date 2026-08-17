@@ -3,6 +3,7 @@ import { TerrainId } from "./TerrainId";
 export interface TerrainDefinitionProps {
   id: TerrainId | string;
   displayName: string;
+  fallbackColor?: string;
 }
 
 /**
@@ -15,6 +16,7 @@ export interface TerrainDefinitionProps {
 export class TerrainDefinition {
   public readonly id: TerrainId;
   public readonly displayName: string;
+  public readonly fallbackColor: string;
 
   constructor(props: TerrainDefinitionProps) {
     if (!props) {
@@ -28,6 +30,11 @@ export class TerrainDefinition {
     }
     this.displayName = props.displayName.trim();
 
+    this.fallbackColor =
+      typeof props.fallbackColor === "string" && props.fallbackColor.trim().length > 0
+        ? props.fallbackColor.trim()
+        : "#475569";
+
     Object.freeze(this);
   }
 
@@ -38,6 +45,19 @@ export class TerrainDefinition {
     return new TerrainDefinition({
       id: this.id,
       displayName: newDisplayName,
+      fallbackColor: this.fallbackColor,
+    });
+  }
+
+  /**
+   * Creates a new copy of TerrainDefinition with updated fallbackColor
+   */
+  public withFallbackColor(newFallbackColor: string): TerrainDefinition {
+    return new TerrainDefinition({
+      id: this.id,
+      displayName: this.displayName,
+      fallbackColor: newFallbackColor,
     });
   }
 }
+

@@ -40,6 +40,14 @@ export class TerrainGenerator {
   }
 
   /**
+   * Returns a new TerrainGenerator instance with updated TerrainClassifier
+   */
+  public withClassifier(newClassifier: TerrainClassifier): TerrainGenerator {
+    return new TerrainGenerator(this.noise, this.geometry, newClassifier);
+  }
+
+
+  /**
    * Generates a populated TerrainMap within the specified inclusive HexBounds.
    */
   public generate(bounds: HexBounds, options: TerrainGenerationOptions): TerrainMap {

@@ -38,6 +38,21 @@ export interface EditorUIElements {
   readonly hoverInfo?: HTMLElement | null;
   readonly panelAssetLibrary?: HTMLElement | null;
   readonly assetLibraryContent?: HTMLElement | null;
+
+  // Terrain management elements
+  readonly btnAddTerrain?: HTMLButtonElement | null;
+  readonly btnImportTerrainConfig?: HTMLButtonElement | null;
+  readonly btnExportTerrainConfig?: HTMLButtonElement | null;
+  readonly btnResetTerrainConfig?: HTMLButtonElement | null;
+  readonly inputTerrainConfigFile?: HTMLInputElement | null;
+  readonly modalAddTerrain?: HTMLElement | null;
+  readonly btnCloseAddTerrainModal?: HTMLButtonElement | null;
+  readonly btnCancelAddTerrain?: HTMLButtonElement | null;
+  readonly btnSubmitAddTerrain?: HTMLButtonElement | null;
+  readonly inputNewTerrainId?: HTMLInputElement | null;
+  readonly inputNewTerrainName?: HTMLInputElement | null;
+  readonly inputNewTerrainColor?: HTMLInputElement | null;
+  readonly labelNewTerrainColorVal?: HTMLElement | null;
 }
 
 /**
@@ -83,6 +98,21 @@ export class EditorUI {
   private readonly hoverInfo: HTMLElement | null;
   private readonly panelAssetLibrary: HTMLElement | null;
   private readonly assetLibraryContent: HTMLElement | null;
+
+  // Terrain management bindings
+  private readonly btnAddTerrain: HTMLButtonElement | null;
+  private readonly btnImportTerrainConfig: HTMLButtonElement | null;
+  private readonly btnExportTerrainConfig: HTMLButtonElement | null;
+  private readonly btnResetTerrainConfig: HTMLButtonElement | null;
+  private readonly inputTerrainConfigFile: HTMLInputElement | null;
+  private readonly modalAddTerrain: HTMLElement | null;
+  private readonly btnCloseAddTerrainModal: HTMLButtonElement | null;
+  private readonly btnCancelAddTerrain: HTMLButtonElement | null;
+  private readonly btnSubmitAddTerrain: HTMLButtonElement | null;
+  private readonly inputNewTerrainId: HTMLInputElement | null;
+  private readonly inputNewTerrainName: HTMLInputElement | null;
+  private readonly inputNewTerrainColor: HTMLInputElement | null;
+  private readonly labelNewTerrainColorVal: HTMLElement | null;
 
   private isDragging = false;
   private lastMouseX = 0;
@@ -136,6 +166,20 @@ export class EditorUI {
     this.hoverInfo = elements.hoverInfo ?? null;
     this.panelAssetLibrary = elements.panelAssetLibrary ?? null;
     this.assetLibraryContent = elements.assetLibraryContent ?? null;
+
+    this.btnAddTerrain = elements.btnAddTerrain ?? null;
+    this.btnImportTerrainConfig = elements.btnImportTerrainConfig ?? null;
+    this.btnExportTerrainConfig = elements.btnExportTerrainConfig ?? null;
+    this.btnResetTerrainConfig = elements.btnResetTerrainConfig ?? null;
+    this.inputTerrainConfigFile = elements.inputTerrainConfigFile ?? null;
+    this.modalAddTerrain = elements.modalAddTerrain ?? null;
+    this.btnCloseAddTerrainModal = elements.btnCloseAddTerrainModal ?? null;
+    this.btnCancelAddTerrain = elements.btnCancelAddTerrain ?? null;
+    this.btnSubmitAddTerrain = elements.btnSubmitAddTerrain ?? null;
+    this.inputNewTerrainId = elements.inputNewTerrainId ?? null;
+    this.inputNewTerrainName = elements.inputNewTerrainName ?? null;
+    this.inputNewTerrainColor = elements.inputNewTerrainColor ?? null;
+    this.labelNewTerrainColorVal = elements.labelNewTerrainColorVal ?? null;
   }
 
   /**
@@ -341,6 +385,148 @@ export class EditorUI {
         this.editor.centerOnGrid({ x: size.cssWidth, y: size.cssHeight }, 1.0);
       });
     }
+
+    // Terrain Management Listeners
+    if (this.btnAddTerrain) {
+      this.btnAddTerrain.addEventListener("click", () => {
+        this.openAddTerrainModal();
+      });
+    }
+
+    if (this.btnCloseAddTerrainModal) {
+      this.btnCloseAddTerrainModal.addEventListener("click", () => {
+        this.closeAddTerrainModal();
+      });
+    }
+
+    if (this.btnCancelAddTerrain) {
+      this.btnCancelAddTerrain.addEventListener("click", () => {
+        this.closeAddTerrainModal();
+      });
+    }
+
+    if (this.btnSubmitAddTerrain) {
+      this.btnSubmitAddTerrain.addEventListener("click", () => {
+        this.submitAddTerrain();
+      });
+    }
+
+    if (this.inputNewTerrainColor) {
+      this.inputNewTerrainColor.addEventListener("input", () => {
+        if (this.labelNewTerrainColorVal && this.inputNewTerrainColor) {
+          this.labelNewTerrainColorVal.textContent = this.inputNewTerrainColor.value;
+        }
+      });
+    }
+
+    if (this.btnResetTerrainConfig) {
+      this.btnResetTerrainConfig.addEventListener("click", async () => {
+        if (
+          confirm("確定要重置為預設的 4 種地形嗎？\n這將會清除您當前自訂的地形名稱與權重配置。")
+        ) {
+          await this.editor.resetTerrainConfigToDefaults();
+          this.renderAssetLibrary();
+        }
+      });
+    }
+
+    if (this.btnExportTerrainConfig) {
+      this.btnExportTerrainConfig.addEventListener("click", () => {
+        this.exportTerrainConfigFile();
+      });
+    }
+
+    if (this.btnImportTerrainConfig) {
+      this.btnImportTerrainConfig.addEventListener("click", () => {
+        this.inputTerrainConfigFile?.click();
+      });
+    }
+
+    if (this.inputTerrainConfigFile) {
+      this.inputTerrainConfigFile.addEventListener("change", () => {
+        const file = this.inputTerrainConfigFile?.files?.[0];
+        if (file) {
+          this.handleTerrainConfigFile(file);
+          this.inputTerrainConfigFile.value = "";
+        }
+      });
+    }
+  }
+
+  private openAddTerrainModal(): void {
+    if (this.inputNewTerrainId) this.inputNewTerrainId.value = "";
+    if (this.inputNewTerrainName) this.inputNewTerrainName.value = "";
+    if (this.inputNewTerrainColor) {
+      this.inputNewTerrainColor.value = "#0284c7";
+      if (this.labelNewTerrainColorVal) this.labelNewTerrainColorVal.textContent = "#0284c7";
+    }
+    if (this.modalAddTerrain) {
+      this.modalAddTerrain.classList.remove("hidden");
+    }
+    this.inputNewTerrainId?.focus();
+  }
+
+  private closeAddTerrainModal(): void {
+    if (this.modalAddTerrain) {
+      this.modalAddTerrain.classList.add("hidden");
+    }
+  }
+
+  private async submitAddTerrain(): Promise<void> {
+    const id = this.inputNewTerrainId?.value.trim() || "";
+    const name = this.inputNewTerrainName?.value.trim() || "";
+    const color = this.inputNewTerrainColor?.value.trim() || "#0284c7";
+
+    if (!id) {
+      alert("請輸入地形 ID (英文代號，例如 snow, swamp, lava)");
+      this.inputNewTerrainId?.focus();
+      return;
+    }
+
+    try {
+      await this.editor.addTerrain(id, name || id, color);
+      this.closeAddTerrainModal();
+      this.renderAssetLibrary();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      alert(`新增失敗: ${msg}`);
+    }
+  }
+
+  private exportTerrainConfigFile(): void {
+    try {
+      const jsonStr = this.editor.exportTerrainConfigJson();
+      const blob = new Blob([jsonStr], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "hex-terrain-config.json";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.editor.setError(`匯出失敗: ${msg}`);
+    }
+  }
+
+  private handleTerrainConfigFile(file: File): void {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const text = e.target?.result as string;
+        await this.editor.importTerrainConfigJson(text);
+        this.renderAssetLibrary();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.editor.setError(`匯入失敗: ${msg}`);
+      }
+    };
+    reader.onerror = () => {
+      this.editor.setError("讀取地形設定檔案失敗。");
+    };
+    reader.readAsText(file);
   }
 
   private attachDragDropListeners(): void {
@@ -713,8 +899,66 @@ export class EditorUI {
   }
 
   /**
-   * Renders the Asset Library panel with registered variants grouped by terrain.
-   * Provides live thumbnail previews and instant weight editing without regenerating terrain.
+   * Dynamically recalculates and updates percentage badges across all terrain rows in real time.
+   */
+  public updatePercentageBadges(): void {
+    if (!this.assetLibraryContent) return;
+
+    const groups = this.assetLibraryContent.querySelectorAll
+      ? this.assetLibraryContent.querySelectorAll(".terrain-group")
+      : (this.assetLibraryContent.children as any);
+
+    let totalWeight = 0;
+    const groupData: Array<{ group: any; weight: number; isEnabled: boolean }> = [];
+
+    for (let i = 0; i < groups.length; i++) {
+      const group = groups[i];
+      if (!group || !group.querySelector && !group.children) continue;
+
+      let checkbox: any;
+      let weightInput: any;
+
+      if (group.querySelector) {
+        checkbox = group.querySelector(".terrain-enable-checkbox");
+        weightInput = group.querySelector(".terrain-gen-weight-input");
+      } else {
+        const header = group.children?.find((c: any) => c.className?.includes("terrain-group-header"));
+        checkbox = header?.children?.find((c: any) => c.className?.includes("terrain-enable-checkbox"));
+        const ratioRow = group.children?.find((c: any) => c.className?.includes("terrain-gen-ratio-row"));
+        weightInput = ratioRow?.children?.find((c: any) => c.className?.includes("terrain-gen-weight-input"));
+      }
+
+      const isEnabled = checkbox ? checkbox.checked : true;
+      const rawVal = weightInput ? parseFloat(weightInput.value.trim()) : 0;
+      const weight = Number.isFinite(rawVal) && rawVal > 0 ? rawVal : 0;
+
+      if (isEnabled && weight > 0) {
+        totalWeight += weight;
+      }
+      groupData.push({ group, weight, isEnabled });
+    }
+
+    for (const item of groupData) {
+      let badge: any;
+      if (item.group.querySelector) {
+        badge = item.group.querySelector(".terrain-gen-pct-badge");
+      } else {
+        const ratioRow = item.group.children?.find((c: any) => c.className?.includes("terrain-gen-ratio-row"));
+        badge = ratioRow?.children?.find((c: any) => c.className?.includes("terrain-gen-pct-badge"));
+      }
+
+      if (badge) {
+        const pctValue =
+          item.isEnabled && item.weight > 0 && totalWeight > 0
+            ? ((item.weight / totalWeight) * 100).toFixed(1)
+            : "0.0";
+        badge.textContent = `(約 ${pctValue}%)`;
+      }
+    }
+  }
+
+  /**
+   * Renders the Terrain & Asset Library panel with registered variants and dynamic weights.
    */
   public renderAssetLibrary(): void {
     if (!this.assetLibraryContent) return;
@@ -730,28 +974,147 @@ export class EditorUI {
 
     this.assetLibraryContent.innerHTML = "";
 
-    const terrains = this.editor.terrainRegistry.list();
+    const configs = this.editor.getTerrainConfigs();
     const totalAssets = this.editor.assetRegistry.size;
+
+    if (configs.length === 0) {
+      const emptyMsg = document.createElement("div");
+      emptyMsg.className = "empty-library-msg";
+      emptyMsg.textContent = '尚未建立任何地形。\n請點擊上方「＋ 新增」建立地形類別。';
+      this.assetLibraryContent.appendChild(emptyMsg);
+      return;
+    }
 
     if (totalAssets === 0) {
       const emptyMsg = document.createElement("div");
       emptyMsg.className = "empty-library-msg";
       emptyMsg.textContent = '尚未註冊任何素材。\n請點擊上方「匯入素材 PNG...」加入印章圖檔。';
       this.assetLibraryContent.appendChild(emptyMsg);
-      return;
     }
 
-    for (const terrain of terrains) {
+    // Calculate total weight of active/enabled terrains with weight > 0
+    const totalWeight = configs
+      .filter((c) => c.isEnabled && c.generationWeight > 0)
+      .reduce((sum, c) => sum + c.generationWeight, 0);
+
+    for (const terrainConfig of configs) {
       const group = document.createElement("div");
       group.className = "terrain-group";
-      group.dataset.terrainId = terrain.id.value;
+      if (!terrainConfig.isEnabled) {
+        group.classList.add("disabled");
+      }
+      group.dataset.terrainId = terrainConfig.id;
 
-      const title = document.createElement("div");
-      title.className = "terrain-group-title";
-      title.textContent = terrain.displayName;
-      group.appendChild(title);
+      // 1. Group Header Row
+      const headerRow = document.createElement("div");
+      headerRow.className = "terrain-group-header";
 
-      const assets = this.editor.assetRegistry.getByTerrain(terrain.id);
+      // Checkbox (Generation participation)
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.className = "terrain-enable-checkbox";
+      checkbox.checked = terrainConfig.isEnabled;
+      checkbox.title = "勾選參與噪聲地圖隨機生成";
+      checkbox.addEventListener("change", async () => {
+        await this.editor.toggleTerrainGeneration(terrainConfig.id, checkbox.checked);
+        this.renderAssetLibrary();
+      });
+      headerRow.appendChild(checkbox);
+
+      // Color Picker Swatch
+      const colorInput = document.createElement("input");
+      colorInput.type = "color";
+      colorInput.className = "terrain-color-picker";
+      colorInput.value = terrainConfig.fallbackColor;
+      colorInput.title = "點選自訂無素材時的佔位底色 (Color Swatch)";
+      colorInput.addEventListener("input", async () => {
+        await this.editor.updateTerrainColor(terrainConfig.id, colorInput.value);
+      });
+      headerRow.appendChild(colorInput);
+
+      // Terrain Display Name
+      const nameEl = document.createElement("span");
+      nameEl.className = "terrain-group-title terrain-group-name";
+      nameEl.textContent = terrainConfig.displayName;
+      nameEl.title = `${terrainConfig.displayName} (${terrainConfig.id})`;
+      headerRow.appendChild(nameEl);
+
+      // Delete Terrain Button (if more than 1 terrain)
+      if (configs.length > 1) {
+        const delBtn = document.createElement("button");
+        delBtn.type = "button";
+        delBtn.className = "btn-delete-terrain";
+        delBtn.textContent = "✕";
+        delBtn.title = `刪除地形「${terrainConfig.displayName}」`;
+        delBtn.addEventListener("click", async () => {
+          if (
+            confirm(
+              `確定要刪除地形「${terrainConfig.displayName}」嗎？\n此地形底下的所有素材變體也將一併移除。`
+            )
+          ) {
+            await this.editor.removeTerrain(terrainConfig.id);
+            this.renderAssetLibrary();
+          }
+        });
+        headerRow.appendChild(delBtn);
+      }
+
+      // Title element as direct child for backwards-compatibility and clean semantics
+      const titleDirect = document.createElement("div");
+      titleDirect.className = "terrain-group-title";
+      titleDirect.textContent = terrainConfig.displayName;
+      group.appendChild(titleDirect);
+
+      group.appendChild(headerRow);
+
+      // 2. Generation Ratio Row
+      const ratioRow = document.createElement("div");
+      ratioRow.className = "terrain-gen-ratio-row";
+
+      const ratioLabel = document.createElement("span");
+      ratioLabel.textContent = "生成佔比:";
+      ratioRow.appendChild(ratioLabel);
+
+      const weightInput = document.createElement("input");
+      weightInput.type = "number";
+      weightInput.className = "terrain-gen-weight-input";
+      weightInput.min = "0";
+      weightInput.step = "0.1";
+      weightInput.value = String(terrainConfig.generationWeight);
+      weightInput.disabled = !terrainConfig.isEnabled;
+
+      // Realtime badge update while typing or clicking stepper
+      weightInput.addEventListener("input", () => {
+        this.updatePercentageBadges();
+      });
+
+      // Commit weight update and regenerate map
+      weightInput.addEventListener("change", async () => {
+        const val = parseFloat(weightInput.value.trim());
+        if (Number.isFinite(val) && val >= 0) {
+          await this.editor.updateTerrainGenerationWeight(terrainConfig.id, val);
+          this.updatePercentageBadges();
+        } else {
+          weightInput.value = String(terrainConfig.generationWeight);
+          this.updatePercentageBadges();
+        }
+      });
+      ratioRow.appendChild(weightInput);
+
+      // Calculate dynamic percentage
+      const pctValue =
+        terrainConfig.isEnabled && terrainConfig.generationWeight > 0 && totalWeight > 0
+          ? ((terrainConfig.generationWeight / totalWeight) * 100).toFixed(1)
+          : "0.0";
+      const pctBadge = document.createElement("span");
+      pctBadge.className = "terrain-gen-pct-badge";
+      pctBadge.textContent = `(約 ${pctValue}%)`;
+      ratioRow.appendChild(pctBadge);
+
+      group.appendChild(ratioRow);
+
+      // 3. Asset Variants List
+      const assets = this.editor.assetRegistry.getByTerrain(terrainConfig.id);
       if (assets.length === 0) {
         const emptyTerrain = document.createElement("div");
         emptyTerrain.className = "empty-terrain-msg";
@@ -785,49 +1148,49 @@ export class EditorUI {
           const details = document.createElement("div");
           details.className = "variant-details";
 
-          const nameEl = document.createElement("div");
-          nameEl.className = "variant-name";
-          nameEl.textContent = asset.name;
-          nameEl.title = asset.name;
-          details.appendChild(nameEl);
+          const variantNameEl = document.createElement("div");
+          variantNameEl.className = "variant-name";
+          variantNameEl.textContent = asset.name;
+          variantNameEl.title = asset.name;
+          details.appendChild(variantNameEl);
 
-          const weightWrap = document.createElement("div");
-          weightWrap.className = "variant-weight-wrap";
+          const variantWeightWrap = document.createElement("div");
+          variantWeightWrap.className = "variant-weight-wrap";
 
-          const weightLabel = document.createElement("span");
-          weightLabel.className = "variant-weight-label";
-          weightLabel.textContent = "出現權重:";
-          weightWrap.appendChild(weightLabel);
+          const variantWeightLabel = document.createElement("span");
+          variantWeightLabel.className = "variant-weight-label";
+          variantWeightLabel.textContent = "出現權重:";
+          variantWeightWrap.appendChild(variantWeightLabel);
 
-          const weightInput = document.createElement("input");
-          weightInput.type = "number";
-          weightInput.className = "variant-weight-input";
-          weightInput.min = "0";
-          weightInput.step = "0.1";
-          weightInput.value = String(asset.weight);
-          weightInput.dataset.assetId = asset.id.value;
+          const variantWeightInput = document.createElement("input");
+          variantWeightInput.type = "number";
+          variantWeightInput.className = "variant-weight-input";
+          variantWeightInput.min = "0";
+          variantWeightInput.step = "0.1";
+          variantWeightInput.value = String(asset.weight);
+          variantWeightInput.dataset.assetId = asset.id.value;
 
-          weightInput.addEventListener("change", async () => {
-            const rawVal = weightInput.value.trim();
+          variantWeightInput.addEventListener("change", async () => {
+            const rawVal = variantWeightInput.value.trim();
             const val = parseFloat(rawVal);
             if (!Number.isFinite(val) || val < 0) {
-              weightInput.classList.add("invalid");
-              weightInput.value = String(asset.weight);
+              variantWeightInput.classList.add("invalid");
+              variantWeightInput.value = String(asset.weight);
               return;
             }
 
-            weightInput.classList.remove("invalid");
+            variantWeightInput.classList.remove("invalid");
             try {
               await this.editor.updateAssetWeight(asset.id, val);
             } catch (err) {
               const msg = err instanceof Error ? err.message : String(err);
               this.editor.setError(msg);
-              weightInput.value = String(asset.weight);
+              variantWeightInput.value = String(asset.weight);
             }
           });
 
-          weightWrap.appendChild(weightInput);
-          details.appendChild(weightWrap);
+          variantWeightWrap.appendChild(variantWeightInput);
+          details.appendChild(variantWeightWrap);
           row.appendChild(details);
 
           list.appendChild(row);
