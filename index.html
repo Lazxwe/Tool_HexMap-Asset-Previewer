@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>六角地形地圖預覽器</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="app-header">
+        <div class="header-brand">
+          <h1>六角地形地圖預覽器</h1>
+          <span class="header-tag">預覽器</span>
+        </div>
+
+        <div class="source-switcher">
+          <button type="button" id="btn-source-builtin" class="btn-toggle active" title="使用噪聲演算法生成地形">隨機生成</button>
+          <button type="button" id="btn-source-json" class="btn-toggle" title="從 JSON 檔案載入地圖">JSON 檔案</button>
+        </div>
+
+        <div class="toolbar-controls">
+          <!-- Built-in Generation Controls -->
+          <div id="panel-builtin-controls" class="source-panel active">
+            <div class="control-group">
+              <label for="input-seed">地貌種子:</label>
+              <input type="number" id="input-seed" value="12345" step="1" />
+              <button type="button" id="btn-random-seed" title="隨機變換地貌種子">🎲</button>
+            </div>
+            <div class="control-group">
+              <label for="input-scale">地形尺度:</label>
+              <input type="number" id="input-scale" value="180" min="10" max="1000" step="10" />
+            </div>
+            <button type="button" id="btn-generate" class="btn-primary">生成地圖</button>
+          </div>
+
+          <!-- JSON Map Input Controls -->
+          <div id="panel-json-controls" class="source-panel hidden">
+            <input type="file" id="input-json-file" accept=".json" class="hidden-file-input" />
+            <button type="button" id="btn-open-json" class="btn-primary">開啟地圖 JSON...</button>
+          </div>
+
+          <div class="toolbar-divider"></div>
+
+          <!-- Asset Import Controls (Task 014) -->
+          <div class="control-group">
+            <input type="file" id="input-asset-files" accept="image/png" multiple class="hidden-file-input" />
+            <button type="button" id="btn-add-assets" class="btn-primary" title="匯入 PNG 印章圖檔">匯入素材 PNG...</button>
+          </div>
+
+          <div class="toolbar-divider"></div>
+
+          <!-- Preview Asset Controls -->
+          <div class="control-group asset-seed-group">
+            <label for="input-asset-seed">素材種子:</label>
+            <input type="number" id="input-asset-seed" value="12345" step="1" />
+            <button type="button" id="btn-reroll-assets" class="btn-secondary" title="重新隨機分配視覺變體 (保持地貌不變)">重新分配素材</button>
+          </div>
+
+          <div class="toolbar-divider"></div>
+          <button type="button" id="btn-reset-view" class="btn-secondary" title="將地圖置中並恢復 100% 縮放">重設視角</button>
+        </div>
+      </header>
+      <div class="app-workspace">
+        <main class="app-main" id="canvas-container">
+          <canvas id="viewport-canvas"></canvas>
+          <div id="drag-drop-overlay" class="drag-drop-overlay hidden">
+            <div class="drag-drop-message">
+              <div class="drag-drop-icon">📥</div>
+              <span>將 PNG 素材圖檔拖曳至此處匯入</span>
+            </div>
+          </div>
+        </main>
+        <aside id="panel-asset-library" class="asset-library-panel">
+          <div class="asset-library-header">
+            <h3>素材庫與變體管理</h3>
+          </div>
+          <div id="asset-library-content" class="asset-library-content">
+            <!-- Dynamically populated by EditorUI -->
+          </div>
+        </aside>
+      </div>
+      <footer class="app-footer">
+        <div id="status-source" class="status-cell">地圖來源：隨機生成</div>
+        <div id="status-text" class="status-cell">狀態：初始化中...</div>
+        <div id="hover-info" class="status-cell hover-cell">游標位置：無</div>
+      </footer>
+
+      <!-- Asset Registration Modal (Task 014) -->
+      <div id="modal-asset-register" class="modal-overlay hidden">
+        <div class="modal-card">
+          <div class="modal-header">
+            <h2>註冊地形印章素材</h2>
+            <button type="button" id="btn-modal-close" class="btn-icon" title="關閉">✕</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label>檔案名稱:</label>
+              <div id="asset-modal-filename" class="file-name-display">file.png</div>
+            </div>
+            <div class="form-group">
+              <label for="select-asset-terrain">套用地形類別:</label>
+              <select id="select-asset-terrain" class="select-control"></select>
+            </div>
+            <div class="form-group">
+              <label for="input-asset-weight">抽取權重 (≥ 0):</label>
+              <input type="number" id="input-asset-weight" value="1.0" min="0" step="0.1" class="input-control" />
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" id="btn-cancel-asset" class="btn-secondary">取消</button>
+            <button type="button" id="btn-submit-asset" class="btn-primary">確認註冊</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
