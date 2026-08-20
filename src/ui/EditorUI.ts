@@ -1,3 +1,4 @@
+import { HexGeometry } from "../domain/hex/HexGeometry";
 import { generateUniqueAssetId } from "../domain/asset/AssetIdGenerator";
 import { generateVariantDisplayName } from "../domain/asset/AssetVariantNaming";
 import { TerrainAsset } from "../domain/asset/TerrainAsset";
@@ -24,6 +25,10 @@ export interface EditorUIElements {
   readonly assetSeedInput?: HTMLInputElement | null;
   readonly rerollAssetsBtn?: HTMLButtonElement | null;
   readonly resetViewBtn?: HTMLButtonElement | null;
+  readonly inputHexWidth?: HTMLInputElement | null;
+  readonly inputHexWidthVal?: HTMLInputElement | null;
+  readonly btnHexModeRegular?: HTMLButtonElement | null;
+  readonly btnHexModeFlattened?: HTMLButtonElement | null;
   readonly canvasContainer?: HTMLElement | null;
   readonly dragDropOverlay?: HTMLElement | null;
   readonly modalAssetRegister?: HTMLElement | null;
@@ -84,6 +89,10 @@ export class EditorUI {
   private readonly assetSeedInput: HTMLInputElement | null;
   private readonly rerollAssetsBtn: HTMLButtonElement | null;
   private readonly resetViewBtn: HTMLButtonElement | null;
+  private readonly inputHexWidth: HTMLInputElement | null;
+  private readonly inputHexWidthVal: HTMLInputElement | null;
+  private readonly btnHexModeRegular: HTMLButtonElement | null;
+  private readonly btnHexModeFlattened: HTMLButtonElement | null;
   private readonly canvasContainer: HTMLElement | null;
   private readonly dragDropOverlay: HTMLElement | null;
   private readonly modalAssetRegister: HTMLElement | null;
@@ -152,6 +161,10 @@ export class EditorUI {
     this.assetSeedInput = elements.assetSeedInput ?? null;
     this.rerollAssetsBtn = elements.rerollAssetsBtn ?? null;
     this.resetViewBtn = elements.resetViewBtn ?? null;
+    this.inputHexWidth = elements.inputHexWidth ?? null;
+    this.inputHexWidthVal = elements.inputHexWidthVal ?? null;
+    this.btnHexModeRegular = elements.btnHexModeRegular ?? null;
+    this.btnHexModeFlattened = elements.btnHexModeFlattened ?? null;
     this.canvasContainer = elements.canvasContainer ?? null;
     this.dragDropOverlay = elements.dragDropOverlay ?? null;
     this.modalAssetRegister = elements.modalAssetRegister ?? null;
@@ -383,6 +396,55 @@ export class EditorUI {
       this.resetViewBtn.addEventListener("click", () => {
         const size = this.getCanvasSize();
         this.editor.centerOnGrid({ x: size.cssWidth, y: size.cssHeight }, 1.0);
+      });
+    }
+
+    // Hex Shape / Width Controls (Task 015)
+    if (this.inputHexWidth) {
+      this.inputHexWidth.addEventListener("input", () => {
+        const val = parseFloat(this.inputHexWidth!.value);
+        if (Number.isFinite(val) && val > 0) {
+          this.editor.setHexDimensions(val);
+          if (this.inputHexWidthVal && document.activeElement !== this.inputHexWidthVal) {
+            this.inputHexWidthVal.value = String(Math.round(val));
+          }
+        }
+      });
+
+      this.inputHexWidth.addEventListener("change", () => {
+        const val = parseFloat(this.inputHexWidth!.value);
+        if (Number.isFinite(val) && val > 0) {
+          this.editor.setHexDimensions(val);
+        }
+      });
+    }
+
+    if (this.inputHexWidthVal) {
+      this.inputHexWidthVal.addEventListener("change", () => {
+        const val = parseFloat(this.inputHexWidthVal!.value);
+        if (Number.isFinite(val) && val > 0) {
+          const clamped = Math.max(60, Math.min(200, val));
+          this.editor.setHexDimensions(clamped);
+          this.inputHexWidthVal!.value = String(Math.round(clamped));
+          if (this.inputHexWidth) {
+            this.inputHexWidth.value = String(Math.round(clamped));
+          }
+        } else {
+          this.inputHexWidthVal!.value = String(Math.round(this.editor.geometry.hexWidth));
+        }
+      });
+    }
+
+    if (this.btnHexModeRegular) {
+      this.btnHexModeRegular.addEventListener("click", () => {
+        const regularWidth = Math.round(HexGeometry.calculateRegularWidth(this.editor.geometry.hexHeight));
+        this.editor.setHexDimensions(regularWidth);
+      });
+    }
+
+    if (this.btnHexModeFlattened) {
+      this.btnHexModeFlattened.addEventListener("click", () => {
+        this.editor.setHexDimensions(120);
       });
     }
 
@@ -836,6 +898,24 @@ export class EditorUI {
     }
     if (this.assetSeedInput && document.activeElement !== this.assetSeedInput) {
       this.assetSeedInput.value = String(state.previewAssetSeed);
+    }
+
+    if (this.inputHexWidth && document.activeElement !== this.inputHexWidth) {
+      this.inputHexWidth.value = String(Math.round(state.hexWidth));
+    }
+    if (this.inputHexWidthVal && document.activeElement !== this.inputHexWidthVal) {
+      this.inputHexWidthVal.value = String(Math.round(state.hexWidth));
+    }
+
+    const regularWidth = Math.round(HexGeometry.calculateRegularWidth(state.hexHeight));
+    const isRegular = Math.abs(state.hexWidth - regularWidth) <= 1;
+    const isFlattened = Math.abs(state.hexWidth - 120) <= 1;
+
+    if (this.btnHexModeRegular) {
+      this.btnHexModeRegular.classList.toggle("active", isRegular);
+    }
+    if (this.btnHexModeFlattened) {
+      this.btnHexModeFlattened.classList.toggle("active", !isRegular && isFlattened);
     }
 
     const isBusy = state.status === "generating" || state.status === "loading-assets";

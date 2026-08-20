@@ -54,6 +54,8 @@ export interface EditorState {
   readonly terrainMap: TerrainMap;
   readonly assetMap: HexAssetMap;
   readonly hoveredHex: HexCoordinate | null;
+  readonly hexWidth: number;
+  readonly hexHeight: number;
   readonly zoom: number;
   readonly panX: number;
   readonly panY: number;
@@ -67,6 +69,8 @@ export interface EditorConfig {
   readonly initialPreviewAssetSeed?: number;
   readonly initialScale?: number;
   readonly initialBounds?: HexBounds;
+  readonly initialHexWidth?: number;
+  readonly initialHexHeight?: number;
   readonly initialZoom?: number;
   readonly initialPanX?: number;
   readonly initialPanY?: number;
@@ -98,6 +102,8 @@ export function createInitialEditorState(config: EditorConfig = {}): EditorState
     terrainMap: new TerrainMap(),
     assetMap: new HexAssetMap(),
     hoveredHex: null,
+    hexWidth: config.initialHexWidth ?? 120,
+    hexHeight: config.initialHexHeight ?? 70,
     zoom: config.initialZoom ?? 1.0,
     panX: config.initialPanX ?? 0,
     panY: config.initialPanY ?? 0,

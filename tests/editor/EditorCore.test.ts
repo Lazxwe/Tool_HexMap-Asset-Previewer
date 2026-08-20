@@ -778,6 +778,40 @@ describe("EditorCore", () => {
       );
     });
   });
+
+  describe("J. Hex Dimension Controls (Task 015)", () => {
+    it("should update geometry dimensions and notify state subscribers without regenerating map", async () => {
+      await editor.generate();
+      const initialTerrainMap = editor.getState().terrainMap;
+      const initialAssetMap = editor.getState().assetMap;
+      const generateSpy = vi.spyOn(TerrainGenerator.prototype, "generate");
+
+      const stateUpdates: any[] = [];
+      editor.subscribe((s) => stateUpdates.push(s));
+
+      editor.setHexDimensions(81, 70);
+
+      expect(editor.geometry.hexWidth).toBe(81);
+      expect(editor.geometry.hexHeight).toBe(70);
+      expect(editor.getState().hexWidth).toBe(81);
+      expect(editor.getState().hexHeight).toBe(70);
+
+      // Verify TerrainMap and asset assignments are strictly preserved
+      expect(editor.getState().terrainMap).toBe(initialTerrainMap);
+      expect(editor.getState().assetMap).toBe(initialAssetMap);
+      expect(generateSpy).not.toHaveBeenCalled();
+      expect(stateUpdates.length).toBeGreaterThan(0);
+
+      generateSpy.mockRestore();
+    });
+
+    it("should reject invalid dimensions in setHexDimensions", () => {
+      expect(() => editor.setHexDimensions(0)).toThrow();
+      expect(() => editor.setHexDimensions(-10)).toThrow();
+      expect(() => editor.setHexDimensions(100, 0)).toThrow();
+    });
+  });
 });
+
 
 

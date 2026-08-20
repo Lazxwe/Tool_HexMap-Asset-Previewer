@@ -149,6 +149,10 @@ describe("EditorUI", () => {
   let assetSeedInput: MockElement;
   let rerollAssetsBtn: MockElement;
   let resetViewBtn: MockElement;
+  let inputHexWidth: MockElement;
+  let inputHexWidthVal: MockElement;
+  let btnHexModeRegular: MockElement;
+  let btnHexModeFlattened: MockElement;
   let canvasContainer: MockElement;
   let dragDropOverlay: MockElement;
   let modalAssetRegister: MockElement;
@@ -208,6 +212,12 @@ describe("EditorUI", () => {
     assetSeedInput.value = "12345";
     rerollAssetsBtn = new MockElement();
     resetViewBtn = new MockElement();
+    inputHexWidth = new MockElement();
+    inputHexWidth.value = "120";
+    inputHexWidthVal = new MockElement();
+    inputHexWidthVal.value = "120";
+    btnHexModeRegular = new MockElement();
+    btnHexModeFlattened = new MockElement();
     canvasContainer = new MockElement();
     dragDropOverlay = new MockElement();
     dragDropOverlay.classList.add("hidden");
@@ -290,6 +300,10 @@ describe("EditorUI", () => {
       assetSeedInput: assetSeedInput as unknown as HTMLInputElement,
       rerollAssetsBtn: rerollAssetsBtn as unknown as HTMLButtonElement,
       resetViewBtn: resetViewBtn as unknown as HTMLButtonElement,
+      inputHexWidth: inputHexWidth as unknown as HTMLInputElement,
+      inputHexWidthVal: inputHexWidthVal as unknown as HTMLInputElement,
+      btnHexModeRegular: btnHexModeRegular as unknown as HTMLButtonElement,
+      btnHexModeFlattened: btnHexModeFlattened as unknown as HTMLButtonElement,
       canvasContainer: canvasContainer as unknown as HTMLElement,
       dragDropOverlay: dragDropOverlay as unknown as HTMLElement,
       modalAssetRegister: modalAssetRegister as unknown as HTMLElement,
@@ -704,6 +718,52 @@ describe("EditorUI", () => {
       );
       expect(emptyEl).toBeDefined();
       expect(emptyEl?.textContent).toContain("尚未註冊任何素材");
+
+      ui.unmount();
+    });
+  });
+
+  describe("Hex Dimension & Shape Controls (Task 015)", () => {
+    it("should update hex width via slider and number input", () => {
+      ui.mount();
+      const setDimsSpy = vi.spyOn(editor, "setHexDimensions");
+
+      // 1. Slider input event
+      inputHexWidth.value = "140";
+      inputHexWidth.dispatchEvent({ type: "input" });
+
+      expect(setDimsSpy).toHaveBeenCalledWith(140);
+      expect(editor.geometry.hexWidth).toBe(140);
+      expect(inputHexWidthVal.value).toBe("140");
+
+      // 2. Number input change event
+      inputHexWidthVal.value = "90";
+      inputHexWidthVal.dispatchEvent({ type: "change" });
+
+      expect(setDimsSpy).toHaveBeenCalledWith(90);
+      expect(editor.geometry.hexWidth).toBe(90);
+      expect(inputHexWidth.value).toBe("90");
+
+      ui.unmount();
+    });
+
+    it("should switch between regular and flattened hex modes via buttons", () => {
+      ui.mount();
+
+      // Click Regular Mode
+      btnHexModeRegular.dispatchEvent({ type: "click" });
+
+      // height = 70, regular width ≈ 81
+      expect(editor.geometry.hexWidth).toBe(81);
+      expect(btnHexModeRegular.classList.contains("active")).toBe(true);
+      expect(btnHexModeFlattened.classList.contains("active")).toBe(false);
+
+      // Click Flattened Mode
+      btnHexModeFlattened.dispatchEvent({ type: "click" });
+
+      expect(editor.geometry.hexWidth).toBe(120);
+      expect(btnHexModeRegular.classList.contains("active")).toBe(false);
+      expect(btnHexModeFlattened.classList.contains("active")).toBe(true);
 
       ui.unmount();
     });

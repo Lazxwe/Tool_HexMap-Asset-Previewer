@@ -58,6 +58,20 @@
           </div>
 
           <div class="toolbar-divider"></div>
+
+          <!-- Hex Dimension / Shape Controls -->
+          <div class="control-group hex-shape-group">
+            <label for="input-hex-width" title="調整六角形寬度 (高度固定為 70px)">六角寬度:</label>
+            <input type="range" id="input-hex-width" min="60" max="200" step="1" value="120" class="slider-control" title="拖曳調整六角形寬度" />
+            <input type="number" id="input-hex-width-val" min="60" max="200" step="1" value="120" class="input-number-xs" title="輸入精確寬度 (px)" />
+            <span class="unit-label">px</span>
+            <div class="btn-group-segmented">
+              <button type="button" id="btn-hex-mode-regular" class="btn-segmented" title="世界地圖模式：正六角形 (寬度約 81px)">正六角</button>
+              <button type="button" id="btn-hex-mode-flattened" class="btn-segmented active" title="戰鬥地圖模式：扁六角形 (寬度 120px)">扁六角</button>
+            </div>
+          </div>
+
+          <div class="toolbar-divider"></div>
           <button type="button" id="btn-reset-view" class="btn-secondary" title="將地圖置中並恢復 100% 縮放">重設視角</button>
         </div>
       </header>

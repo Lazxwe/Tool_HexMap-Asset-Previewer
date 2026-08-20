@@ -63,7 +63,10 @@ export class EditorCore {
   public readonly assetRegistry: TerrainAssetRegistry;
   public readonly terrainRegistry: TerrainRegistry;
   public readonly assetLoader: IAssetLoader;
-  public readonly geometry: HexGeometry;
+  private _geometry: HexGeometry;
+  public get geometry(): HexGeometry {
+    return this._geometry;
+  }
   public readonly viewport: Viewport;
   public readonly terrainStorage: TerrainStorage;
 
@@ -83,7 +86,7 @@ export class EditorCore {
     this.assetRegistry = deps.assetRegistry;
     this.terrainRegistry = deps.terrainRegistry;
     this.assetLoader = deps.assetLoader;
-    this.geometry = deps.geometry;
+    this._geometry = deps.geometry;
     this.deserializer = new ProjectDeserializer(this.terrainRegistry);
 
     this.terrainStorage = deps.terrainStorage ?? new TerrainStorage();
@@ -121,6 +124,8 @@ export class EditorCore {
 
     this._state = createInitialEditorState({
       ...config,
+      initialHexWidth: this._geometry.hexWidth,
+      initialHexHeight: this._geometry.hexHeight,
       initialZoom: this.viewport.zoom,
       initialPanX: this.viewport.panX,
       initialPanY: this.viewport.panY,
@@ -264,6 +269,31 @@ export class EditorCore {
       );
     }
     this.updateState({ bounds: { ...bounds } });
+  }
+
+  /**
+   * Updates hex dimensions dynamically without re-generating terrain or re-rolling asset assignments.
+   * Updates geometry reference and emits state update to trigger immediate canvas rerender.
+   */
+  public setHexDimensions(hexWidth: number, hexHeight?: number): void {
+    const targetHeight = hexHeight ?? this._geometry.hexHeight;
+    HexGeometry.validateDimensions(hexWidth, targetHeight);
+
+    if (this._geometry.hexWidth === hexWidth && this._geometry.hexHeight === targetHeight) {
+      return;
+    }
+
+    this._geometry = new HexGeometry(hexWidth, targetHeight);
+    this._generator = new TerrainGenerator(
+      this._generator.noise,
+      this._geometry,
+      this._generator.classifier
+    );
+
+    this.updateState({
+      hexWidth: this._geometry.hexWidth,
+      hexHeight: this._geometry.hexHeight,
+    });
   }
 
   public setHoveredHex(hex: HexCoordinate | null): void {

@@ -42,6 +42,28 @@ export class HexGeometry {
   }
 
   /**
+   * Calculates the exact theoretical width for a regular flat-top hexagon given its height.
+   * For regular flat-top hexagon: Width = (2 / sqrt(3)) * Height ≈ 1.1547005 * Height
+   */
+  public static calculateRegularWidth(hexHeight: number): number {
+    if (!Number.isFinite(hexHeight) || hexHeight <= 0) {
+      throw new Error(`Invalid hexHeight: ${hexHeight}. Height must be a positive finite number.`);
+    }
+    return (2 / Math.sqrt(3)) * hexHeight;
+  }
+
+  /**
+   * Calculates the exact theoretical height for a regular flat-top hexagon given its width.
+   * For regular flat-top hexagon: Height = (sqrt(3) / 2) * Width ≈ 0.8660254 * Width
+   */
+  public static calculateRegularHeight(hexWidth: number): number {
+    if (!Number.isFinite(hexWidth) || hexWidth <= 0) {
+      throw new Error(`Invalid hexWidth: ${hexWidth}. Width must be a positive finite number.`);
+    }
+    return (Math.sqrt(3) / 2) * hexWidth;
+  }
+
+  /**
    * Converts a HexCoordinate to pixel-space center point.
    *
    * Formula for Flat-top (odd-q):
